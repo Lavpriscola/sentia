@@ -163,16 +163,28 @@ print(f"Throughput: {results['throughput']:.1f} texts/second")
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-## 📊 Performance Metrics
+## 📊 Performance Targets & Current Status
 
-| Metric | Target | Current Capability |
-|--------|--------|-------------------|
-| **Throughput** | 1M+ analyses/day | ✅ Achieved |
-| **Latency** | <100ms | ✅ Achieved |
-| **Accuracy** | >95% | ✅ Achieved |
-| **Uptime** | 99.9% | ✅ Achieved |
-| **Global Response** | <200ms | ✅ Achieved |
-| **Languages** | 9+ supported | ✅ Achieved |
+| Metric | Enterprise Target | Current Status | Notes |
+|--------|------------------|----------------|-------|
+| **Throughput** | 1M+ analyses/day | 🔧 Architecture Ready | Scaling components implemented, not tested at scale |
+| **Latency** | <100ms | 🔧 Optimized for Speed | Single analysis ~10-50ms, batch processing varies |
+| **Accuracy** | >95% | 📊 Baseline Established | Rule-based system, accuracy depends on content type |
+| **Uptime** | 99.9% | 🚀 Development Stage | Production deployment architecture designed |
+| **Global Response** | <200ms | 🌐 Architecture Planned | Edge computing design ready, not deployed |
+| **Languages** | 9+ supported | ✅ Implemented | Multi-language processing active |
+
+## ⚠️ Current Development Status
+
+**Important Note**: This is a prototype/development system with enterprise-scale architecture designed but not fully deployed or tested at scale. The system includes:
+
+- ✅ **Working Core Features**: Basic sentiment analysis, web interface, data management
+- ✅ **Multi-Language Support**: 9+ languages with varying levels of implementation
+- ✅ **Scaling Architecture**: Code and infrastructure designs for enterprise scale
+- 🔧 **In Development**: Advanced analytics, uncertainty assessment, batch processing
+- 📋 **Planned**: Production deployment, load testing, performance optimization
+
+**Performance Claims**: All enterprise performance targets are architectural goals, not tested achievements. Actual performance will vary based on deployment, hardware, and usage patterns.
 
 ## 🌐 Multi-Language Support
 
