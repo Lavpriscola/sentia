@@ -1,0 +1,338 @@
+{% extends "base.html" %}
+
+{% block title %}Data Management - K-Pop Sentiment Analyzer{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-database text-primary"></i> 
+            Data Management
+        </h1>
+        <p class="lead">Review, correct, and manage sentiment analysis data for machine learning training.</p>
+    </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <h4>{{ total }}</h4>
+                <p class="mb-0">Total Records</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h4>{{ page }}</h4>
+                <p class="mb-0">Current Page</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body text-center">
+                <h4>{{ total_pages }}</h4>
+                <p class="mb-0">Total Pages</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <h4>20</h4>
+                <p class="mb-0">Per Page</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-table"></i> Analysis Records</h5>
+                <div>
+                    <a href="{{ url_for('export_data') }}" class="btn btn-sm btn-outline-success" target="_blank">
+                        <i class="fas fa-download"></i> Export All
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if analyses %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th style="width: 5%;">ID</th>
+                                <th style="width: 35%;">Text</th>
+                                <th style="width: 15%;">Predicted Label</th>
+                                <th style="width: 10%;">Confidence</th>
+                                <th style="width: 10%;">Risk Level</th>
+                                <th style="width: 15%;">Corrected Label</th>
+                                <th style="width: 10%;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for analysis in analyses %}
+                            <tr id="row-{{ analysis.id }}" class="{% if analysis.is_verified %}table-success{% endif %}">
+                                <td>
+                                    <small class="text-muted">#{{ analysis.id }}</small>
+                                    {% if analysis.is_verified %}
+                                        <br><span class="badge bg-success badge-sm">✓</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="text-preview" style="max-height: 80px; overflow-y: auto;">
+                                        {{ analysis.text }}
+                                    </div>
+                                    <small class="text-muted">{{ analysis.timestamp }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary label-badge">
+                                        {{ analysis.label_name.replace('_', ' ').title() }}
+                                    </span>
+                                    <br><small class="text-muted">ID: {{ analysis.predicted_label }}</small>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="confidence-bar me-2" style="width: 40px; height: 6px; position: relative; background: #e9ecef; border-radius: 3px;">
+                                            <div style="width: {{ analysis.confidence * 100 }}%; height: 100%; background: 
+                                                {% if analysis.confidence >= 0.7 %}#28a745
+                                                {% elif analysis.confidence >= 0.5 %}#ffc107
+                                                {% else %}#dc3545{% endif %}; border-radius: 3px;"></div>
+                                        </div>
+                                        <small>{{ "%.0f"|format(analysis.confidence * 100) }}%</small>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge 
+                                        {% if analysis.risk_level == 'low' %}bg-success
+                                        {% elif analysis.risk_level == 'medium' %}bg-warning
+                                        {% elif analysis.risk_level == 'high' %}bg-danger
+                                        {% else %}bg-dark{% endif %}">
+                                        {{ analysis.risk_level.title() }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('update_label', analysis_id=analysis.id) }}" class="d-inline">
+                                        <div class="input-group input-group-sm">
+                                            <select name="corrected_label" class="form-select form-select-sm" 
+                                                    {% if analysis.user_corrected_label %}value="{{ analysis.user_corrected_label }}"{% endif %}>
+                                                <option value="">Select...</option>
+                                                {% for label_id, label_info in sentiment_labels.items() %}
+                                                <option value="{{ label_id }}" 
+                                                        {% if analysis.user_corrected_label == label_id %}selected{% endif %}>
+                                                    {{ label_info.name.replace('_', ' ').title() }}
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                            <button type="submit" class="btn btn-outline-primary btn-sm">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                        </div>
+                                    </form>
+                                    {% if analysis.user_corrected_label %}
+                                        <div class="mt-1">
+                                            <span class="badge bg-warning text-dark">
+                                                {{ sentiment_labels[analysis.user_corrected_label].name.replace('_', ' ').title() }}
+                                            </span>
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group-vertical btn-group-sm">
+                                        <button type="button" class="btn btn-outline-info btn-sm" 
+                                                data-bs-toggle="modal" data-bs-target="#detailModal{{ analysis.id }}">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <form method="POST" action="{{ url_for('delete_analysis', analysis_id=analysis.id) }}" 
+                                              class="d-inline" onsubmit="return confirm('Are you sure you want to delete this record?')">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                            
+                            <!-- Detail Modal -->
+                            <div class="modal fade" id="detailModal{{ analysis.id }}" tabindex="-1">
+                                <div class="modal-dialog modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Analysis Details #{{ analysis.id }}</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <h6>Original Text:</h6>
+                                                    <div class="bg-light p-3 rounded mb-3">
+                                                        {{ analysis.text }}
+                                                    </div>
+                                                    
+                                                    <h6>Prediction:</h6>
+                                                    <p><strong>Label:</strong> {{ analysis.label_name.replace('_', ' ').title() }}</p>
+                                                    <p><strong>Confidence:</strong> {{ "%.1f"|format(analysis.confidence * 100) }}%</p>
+                                                    <p><strong>Risk Level:</strong> {{ analysis.risk_level.title() }}</p>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h6>Reasoning:</h6>
+                                                    <p>{{ analysis.reasoning }}</p>
+                                                    
+                                                    <h6>Timestamp:</h6>
+                                                    <p>{{ analysis.timestamp }}</p>
+                                                    
+                                                    {% if analysis.user_corrected_label %}
+                                                    <h6>User Correction:</h6>
+                                                    <p>
+                                                        <span class="badge bg-warning">
+                                                            {{ sentiment_labels[analysis.user_corrected_label].name.replace('_', ' ').title() }}
+                                                        </span>
+                                                    </p>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            
+                                            {% if analysis.metadata %}
+                                            <div class="mt-3">
+                                                <h6>Technical Details:</h6>
+                                                <details>
+                                                    <summary class="text-muted">View Metadata</summary>
+                                                    <pre class="bg-light p-2 mt-2 small">{{ analysis.metadata }}</pre>
+                                                </details>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if total_pages > 1 %}
+                <nav aria-label="Page navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('data_management', page=page-1) }}">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for p in range(1, total_pages + 1) %}
+                            {% if p == page %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ p }}</span>
+                            </li>
+                            {% elif p <= 3 or p >= total_pages - 2 or (p >= page - 2 and p <= page + 2) %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('data_management', page=p) }}">{{ p }}</a>
+                            </li>
+                            {% elif p == 4 or p == total_pages - 3 %}
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('data_management', page=page+1) }}">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+                
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No data available</h5>
+                    <p class="text-muted">Start by analyzing some text to build your training dataset.</p>
+                    <a href="{{ url_for('analyze') }}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Analyze Text
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Actions (Future Enhancement) -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-tools"></i> Data Quality Tools</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                                <h6>Verified Records</h6>
+                                <p class="text-muted small">Records with user corrections that can be used for training</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <i class="fas fa-exclamation-triangle fa-2x text-warning mb-2"></i>
+                                <h6>Low Confidence</h6>
+                                <p class="text-muted small">Records with confidence < 70% that may need review</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <i class="fas fa-shield-alt fa-2x text-danger mb-2"></i>
+                                <h6>High Risk</h6>
+                                <p class="text-muted small">Records flagged as high or very high risk</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Auto-submit form when label is selected
+document.querySelectorAll('select[name="corrected_label"]').forEach(function(select) {
+    select.addEventListener('change', function() {
+        if (this.value) {
+            this.closest('form').submit();
+        }
+    });
+});
+
+// Highlight rows with corrections
+document.querySelectorAll('tr[id^="row-"]').forEach(function(row) {
+    const correctedLabel = row.querySelector('select[name="corrected_label"]').value;
+    if (correctedLabel) {
+        row.classList.add('table-warning');
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - K-Pop Sentiment Analyzer{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-chart-line text-primary"></i> 
+            K-Pop Sentiment Analysis Dashboard
+        </h1>
+        <p class="lead">Analyze K-Pop discourse with advanced sentiment classification and risk assessment.</p>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ stats.total_analyses }}</h4>
+                        <p class="mb-0">Total Analyses</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-comments fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ "%.1f"|format(stats.average_confidence * 100) }}%</h4>
+                        <p class="mb-0">Avg Confidence</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-percentage fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ stats.label_distribution|length }}</h4>
+                        <p class="mb-0">Active Labels</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-tags fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h4>{{ stats.risk_distribution|length }}</h4>
+                        <p class="mb-0">Risk Levels</p>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-shield-alt fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-bolt"></i> Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <a href="{{ url_for('analyze') }}" class="btn btn-primary btn-lg w-100 mb-2">
+                            <i class="fas fa-search"></i> Analyze New Text
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="{{ url_for('data_management') }}" class="btn btn-secondary btn-lg w-100 mb-2">
+                            <i class="fas fa-edit"></i> Manage Training Data
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Label Distribution -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-pie"></i> Sentiment Label Distribution</h5>
+            </div>
+            <div class="card-body">
+                {% if stats.label_distribution %}
+                    <canvas id="labelChart" width="400" height="300"></canvas>
+                {% else %}
+                    <p class="text-muted">No data available yet. Start analyzing some text!</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> Risk Level Distribution</h5>
+            </div>
+            <div class="card-body">
+                {% if stats.risk_distribution %}
+                    <canvas id="riskChart" width="400" height="300"></canvas>
+                {% else %}
+                    <p class="text-muted">No data available yet. Start analyzing some text!</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Analyses -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-clock"></i> Recent Analyses</h5>
+                <a href="{{ url_for('data_management') }}" class="btn btn-sm btn-outline-primary">
+                    View All <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                {% if recent_analyses %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Text Preview</th>
+                                    <th>Sentiment</th>
+                                    <th>Confidence</th>
+                                    <th>Risk Level</th>
+                                    <th>Timestamp</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for analysis in recent_analyses %}
+                                <tr>
+                                    <td>
+                                        <div class="text-preview">
+                                            {{ analysis.text[:100] }}{% if analysis.text|length > 100 %}...{% endif %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary label-badge">
+                                            {{ analysis.label_name.replace('_', ' ').title() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="confidence-bar me-2" style="width: 50px; position: relative;">
+                                                <div style="width: {{ analysis.confidence * 100 }}%; height: 100%; background: 
+                                                    {% if analysis.confidence >= 0.7 %}#28a745
+                                                    {% elif analysis.confidence >= 0.5 %}#ffc107
+                                                    {% else %}#dc3545{% endif %}; border-radius: 4px;"></div>
+                                            </div>
+                                            <small>{{ "%.0f"|format(analysis.confidence * 100) }}%</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if analysis.risk_level == 'low' %}bg-success
+                                            {% elif analysis.risk_level == 'medium' %}bg-warning
+                                            {% elif analysis.risk_level == 'high' %}bg-danger
+                                            {% else %}bg-dark{% endif %}">
+                                            {{ analysis.risk_level.title() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ analysis.timestamp }}</small>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No analyses yet</h5>
+                        <p class="text-muted">Start by analyzing some K-Pop related text!</p>
+                        <a href="{{ url_for('analyze') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Analyze Text
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Label Distribution Chart
+{% if stats.label_distribution %}
+const labelCtx = document.getElementById('labelChart').getContext('2d');
+const labelChart = new Chart(labelCtx, {
+    type: 'doughnut',
+    data: {
+        labels: [{% for label in stats.label_distribution %}'{{ label[1].replace("_", " ").title() }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            data: [{% for label in stats.label_distribution %}{{ label[2] }}{% if not loop.last %},{% endif %}{% endfor %}],
+            backgroundColor: [
+                '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                '#FF9F40', '#FF6384', '#C9CBCF', '#4BC0C0', '#FF6384'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom'
+            }
+        }
+    }
+});
+{% endif %}
+
+// Risk Distribution Chart
+{% if stats.risk_distribution %}
+const riskCtx = document.getElementById('riskChart').getContext('2d');
+const riskChart = new Chart(riskCtx, {
+    type: 'bar',
+    data: {
+        labels: [{% for risk in stats.risk_distribution %}'{{ risk[0].title() }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Count',
+            data: [{% for risk in stats.risk_distribution %}{{ risk[1] }}{% if not loop.last %},{% endif %}{% endfor %}],
+            backgroundColor: [
+                '#28a745', '#ffc107', '#fd7e14', '#dc3545'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            }
+        }
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

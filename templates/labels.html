@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}Sentiment Labels - K-Pop Sentiment Analyzer{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="fas fa-tags text-primary"></i> 
+            K-Pop Sentiment Labels
+        </h1>
+        <p class="lead">Comprehensive guide to the 10 sentiment categories designed specifically for K-Pop discourse analysis.</p>
+    </div>
+</div>
+
+<!-- Overview -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-light">
+            <div class="card-body">
+                <h5><i class="fas fa-info-circle"></i> Purpose of Sentiment Labels</h5>
+                <p class="mb-2">These sentiment labels serve as training signals for machine learning models to:</p>
+                <div class="row">
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check text-success me-2"></i> <strong>Detect Emotional Tone:</strong> Identify positive enthusiasm, nostalgia, anger, disappointment, sarcasm, or neutrality</li>
+                            <li><i class="fas fa-check text-success me-2"></i> <strong>Flag Risk Indicators:</strong> Pinpoint malicious content, coordinated attacks, or unreliable information</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check text-success me-2"></i> <strong>Assess Bias:</strong> Distinguish between objective reporting and emotionally charged commentary</li>
+                            <li><i class="fas fa-check text-success me-2"></i> <strong>Predict Impact:</strong> Estimate potential for virality, controversy, or influence on streaming numbers</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Risk Level Legend -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-shield-alt"></i> Risk Level Guide</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <span class="badge bg-success fs-6 mb-2">Low Risk</span>
+                            <p class="small text-muted">Positive, constructive, or neutral content</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <span class="badge bg-warning fs-6 mb-2">Medium Risk</span>
+                            <p class="small text-muted">Emotional content that may need monitoring</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <span class="badge bg-danger fs-6 mb-2">High Risk</span>
+                            <p class="small text-muted">Potentially harmful or inflammatory content</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <span class="badge bg-dark fs-6 mb-2">Very High Risk</span>
+                            <p class="small text-muted">Malicious, coordinated, or dangerous content</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sentiment Labels -->
+<div class="row">
+    {% for label_id, label_info in sentiment_labels.items() %}
+    <div class="col-md-6 mb-4">
+        <div class="card h-100 sentiment-card risk-{{ label_info.risk_level }}">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <span class="badge bg-primary me-2">{{ label_id }}</span>
+                    {{ label_info.name.replace('_', ' ').title() }}
+                </h5>
+                <span class="badge 
+                    {% if label_info.risk_level == 'low' %}bg-success
+                    {% elif label_info.risk_level == 'medium' %}bg-warning
+                    {% elif label_info.risk_level == 'high' %}bg-danger
+                    {% else %}bg-dark{% endif %}">
+                    {{ label_info.risk_level.replace('_', ' ').title() }}
+                </span>
+            </div>
+            <div class="card-body">
+                <p class="card-text">{{ label_info.description }}</p>
+                
+                <h6><i class="fas fa-key"></i> Key Indicators:</h6>
+                <div class="mb-3">
+                    {% for keyword in label_info.keywords %}
+                    <span class="badge bg-light text-dark me-1 mb-1">{{ keyword }}</span>
+                    {% endfor %}
+                </div>
+                
+                <h6><i class="fas fa-quote-left"></i> Examples:</h6>
+                {% for example in label_info.examples %}
+                <div class="bg-light p-2 rounded mb-2 small">
+                    <em>"{{ example }}"</em>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Usage Guidelines -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-book"></i> Classification Guidelines</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-thumbs-up text-success"></i> Best Practices:</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-check text-success me-2"></i> Consider the overall tone and intent of the message</li>
+                            <li><i class="fas fa-check text-success me-2"></i> Look for emotional indicators and context clues</li>
+                            <li><i class="fas fa-check text-success me-2"></i> Pay attention to sarcasm and implicit meanings</li>
+                            <li><i class="fas fa-check text-success me-2"></i> Consider the potential impact on the K-Pop community</li>
+                            <li><i class="fas fa-check text-success me-2"></i> When in doubt, choose the most conservative classification</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-exclamation-triangle text-warning"></i> Common Challenges:</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-info-circle text-info me-2"></i> <strong>Mixed Emotions:</strong> Use "Mixed/Conflicted" when multiple sentiments are present</li>
+                            <li><i class="fas fa-info-circle text-info me-2"></i> <strong>Sarcasm Detection:</strong> Look for quotation marks, emojis, and context</li>
+                            <li><i class="fas fa-info-circle text-info me-2"></i> <strong>Cultural Context:</strong> Consider K-Pop specific terminology and references</li>
+                            <li><i class="fas fa-info-circle text-info me-2"></i> <strong>Coordinated Attacks:</strong> Look for patterns and organized language</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Machine Learning Integration -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-robot"></i> Machine Learning Integration</h5>
+            </div>
+            <div class="card-body">
+                <p>These labels are designed to train machine learning models that can:</p>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card bg-light h-100">
+                            <div class="card-body text-center">
+                                <i class="fas fa-brain fa-2x text-primary mb-2"></i>
+                                <h6>Learn Patterns</h6>
+                                <p class="small text-muted">Identify linguistic patterns and emotional indicators specific to K-Pop discourse</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light h-100">
+                            <div class="card-body text-center">
+                                <i class="fas fa-search fa-2x text-success mb-2"></i>
+                                <h6>Detect Risks</h6>
+                                <p class="small text-muted">Automatically flag potentially harmful or malicious content for review</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light h-100">
+                            <div class="card-body text-center">
+                                <i class="fas fa-chart-line fa-2x text-warning mb-2"></i>
+                                <h6>Predict Impact</h6>
+                                <p class="small text-muted">Estimate the potential viral spread and community impact of content</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center">
+                <h5>Ready to start analyzing?</h5>
+                <p class="text-muted">Use these labels to classify K-Pop content and build your training dataset.</p>
+                <div class="d-flex justify-content-center gap-2">
+                    <a href="{{ url_for('analyze') }}" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Analyze Text
+                    </a>
+                    <a href="{{ url_for('data_management') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-database"></i> Manage Data
+                    </a>
+                    <a href="{{ url_for('statistics') }}" class="btn btn-outline-info">
+                        <i class="fas fa-chart-bar"></i> View Statistics
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.sentiment-card {
+    transition: transform 0.2s;
+}
+
+.sentiment-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.badge {
+    font-size: 0.8em;
+}
+
+.card-text {
+    line-height: 1.6;
+}
+</style>
+{% endblock %}
