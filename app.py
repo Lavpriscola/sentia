@@ -227,6 +227,120 @@ def view_labels():
     """View sentiment labels information"""
     return render_template('labels.html', sentiment_labels=SENTIMENT_LABELS)
 
+@app.route('/manage_labels')
+def manage_labels():
+    """Display label management interface"""
+    return render_template('manage_labels.html', labels=SENTIMENT_LABELS)
+
+@app.route('/edit_label/<int:label_id>', methods=['GET', 'POST'])
+def edit_label(label_id):
+    """Edit a specific label"""
+    if request.method == 'POST':
+        try:
+            # Get form data
+            name = request.form.get('name', '').strip().upper()
+            description = request.form.get('description', '').strip()
+            risk_level = request.form.get('risk_level', 'Low')
+            keywords = [k.strip() for k in request.form.get('keywords', '').split(',') if k.strip()]
+            examples = [e.strip() for e in request.form.get('examples', '').split('\n') if e.strip()]
+            
+            if not all([name, description, keywords]):
+                flash('Please fill in all required fields.', 'error')
+                return redirect(url_for('edit_label', label_id=label_id))
+            
+            # Update the label in memory (in a real app, this would save to database)
+            SENTIMENT_LABELS[label_id].update({
+                'name': name,
+                'description': description,
+                'risk_level': risk_level,
+                'keywords': keywords,
+                'examples': examples
+            })
+            
+            flash(f'Label {label_id} updated successfully!', 'success')
+            return redirect(url_for('manage_labels'))
+            
+        except Exception as e:
+            flash(f'Error updating label: {str(e)}', 'error')
+            return redirect(url_for('edit_label', label_id=label_id))
+    
+    # GET request - show edit form
+    label = SENTIMENT_LABELS.get(label_id)
+    if not label:
+        flash('Label not found.', 'error')
+        return redirect(url_for('manage_labels'))
+    
+    return render_template('edit_label.html', label=label, label_id=label_id)
+
+@app.route('/add_label', methods=['POST'])
+def add_label():
+    """Add a new sentiment label"""
+    try:
+        # Get form data
+        name = request.form.get('name', '').strip().upper()
+        description = request.form.get('description', '').strip()
+        risk_level = request.form.get('risk_level', 'Low')
+        keywords = [k.strip() for k in request.form.get('keywords', '').split(',') if k.strip()]
+        examples = [e.strip() for e in request.form.get('examples', '').split('\n') if e.strip()]
+        
+        if not all([name, description, keywords]):
+            flash('Please fill in all required fields.', 'error')
+            return redirect(url_for('manage_labels'))
+        
+        # Find next available ID
+        next_id = max(SENTIMENT_LABELS.keys()) + 1 if SENTIMENT_LABELS else 1
+        
+        # Add new label
+        SENTIMENT_LABELS[next_id] = {
+            'name': name,
+            'description': description,
+            'risk_level': risk_level,
+            'keywords': keywords,
+            'patterns': [],  # Can be added later
+            'examples': examples
+        }
+        
+        flash(f'New label "{name}" added successfully!', 'success')
+        return redirect(url_for('manage_labels'))
+        
+    except Exception as e:
+        flash(f'Error adding label: {str(e)}', 'error')
+        return redirect(url_for('manage_labels'))
+
+@app.route('/delete_label/<int:label_id>', methods=['DELETE'])
+def delete_label(label_id):
+    """Delete a sentiment label"""
+    try:
+        if label_id not in SENTIMENT_LABELS:
+            return jsonify({'success': False, 'error': 'Label not found'})
+        
+        # Check if label is being used in existing analyses
+        analyzer = SentimentAnalyzer()
+        conn = sqlite3.connect(analyzer.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT COUNT(*) FROM sentiment_analysis WHERE predicted_label = ?', (label_id,))
+        usage_count = cursor.fetchone()[0]
+        conn.close()
+        
+        if usage_count > 0:
+            return jsonify({
+                'success': False, 
+                'error': f'Cannot delete label. It is used in {usage_count} existing analyses.'
+            })
+        
+        # Delete the label
+        label_name = SENTIMENT_LABELS[label_id]['name']
+        del SENTIMENT_LABELS[label_id]
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Label "{label_name}" deleted successfully'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.errorhandler(404)
 def not_found(error):
     return render_template('error.html', 

@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Label - K-Pop Sentiment Analyzer{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('manage_labels') }}">Manage Labels</a></li>
+                    <li class="breadcrumb-item active">Edit Label {{ label_id }}</li>
+                </ol>
+            </nav>
+            
+            <h1><i class="fas fa-edit"></i> Edit Sentiment Label</h1>
+            <p class="lead">Modify the properties of sentiment label #{{ label_id }}</p>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cog"></i> Label Configuration
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="labelName" class="form-label">
+                                <i class="fas fa-tag"></i> Label Name <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="labelName" name="name" 
+                                   value="{{ label.name }}" required>
+                            <div class="form-text">Use UPPERCASE_WITH_UNDERSCORES format.</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="labelDescription" class="form-label">
+                                <i class="fas fa-align-left"></i> Description <span class="text-danger">*</span>
+                            </label>
+                            <textarea class="form-control" id="labelDescription" name="description" 
+                                      rows="4" required>{{ label.description }}</textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="riskLevel" class="form-label">
+                                <i class="fas fa-exclamation-triangle"></i> Risk Level <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="riskLevel" name="risk_level" required>
+                                <option value="Low" {% if label.risk_level == 'Low' %}selected{% endif %}>
+                                    Low Risk - Safe, positive content
+                                </option>
+                                <option value="Medium" {% if label.risk_level == 'Medium' %}selected{% endif %}>
+                                    Medium Risk - Emotional content needing monitoring
+                                </option>
+                                <option value="High" {% if label.risk_level == 'High' %}selected{% endif %}>
+                                    High Risk - Potentially inflammatory content
+                                </option>
+                                <option value="Very High" {% if label.risk_level == 'Very High' %}selected{% endif %}>
+                                    Very High Risk - Dangerous or malicious content
+                                </option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="keywords" class="form-label">
+                                <i class="fas fa-key"></i> Keywords <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="keywords" name="keywords" 
+                                   value="{{ label.keywords | join(', ') }}" required>
+                            <div class="form-text">Separate keywords with commas. These help identify this sentiment in text.</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="examples" class="form-label">
+                                <i class="fas fa-quote-left"></i> Example Text
+                            </label>
+                            <textarea class="form-control" id="examples" name="examples" rows="3">{{ label.examples | join('\n') if label.examples else '' }}</textarea>
+                            <div class="form-text">One example per line. These help users understand when to use this label.</div>
+                        </div>
+                        
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <strong>Important:</strong> Changes to keywords and patterns may require restarting the application to take full effect in the analysis engine.
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('manage_labels') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Back to Labels
+                            </a>
+                            <div>
+                                <button type="button" class="btn btn-outline-primary me-2" onclick="testLabel()">
+                                    <i class="fas fa-vial"></i> Test Label
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Save Changes
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <!-- Current Label Info -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-info-circle"></i> Current Label Info</h6>
+                </div>
+                <div class="card-body">
+                    <p><strong>ID:</strong> {{ label_id }}</p>
+                    <p><strong>Current Risk Level:</strong> 
+                        <span class="badge 
+                            {% if label.risk_level == 'Low' %}bg-success
+                            {% elif label.risk_level == 'Medium' %}bg-warning text-dark
+                            {% elif label.risk_level == 'High' %}bg-danger
+                            {% else %}bg-dark{% endif %}">
+                            {{ label.risk_level }}
+                        </span>
+                    </p>
+                    <p><strong>Keywords Count:</strong> {{ label.keywords | length }}</p>
+                    <p><strong>Examples Count:</strong> {{ label.examples | length if label.examples else 0 }}</p>
+                </div>
+            </div>
+            
+            <!-- Usage Statistics -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-chart-bar"></i> Usage Statistics</h6>
+                </div>
+                <div class="card-body">
+                    <div id="usageStats">
+                        <div class="text-center">
+                            <div class="spinner-border spinner-border-sm" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Loading usage data...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Help -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-question-circle"></i> Help</h6>
+                </div>
+                <div class="card-body">
+                    <h6>Keyword Tips:</h6>
+                    <ul class="small">
+                        <li>Use lowercase for keywords</li>
+                        <li>Include variations and synonyms</li>
+                        <li>Consider slang and abbreviations</li>
+                        <li>Test with real examples</li>
+                    </ul>
+                    
+                    <h6>Risk Level Guide:</h6>
+                    <ul class="small">
+                        <li><strong>Low:</strong> Safe, positive content</li>
+                        <li><strong>Medium:</strong> Needs monitoring</li>
+                        <li><strong>High:</strong> Potentially harmful</li>
+                        <li><strong>Very High:</strong> Dangerous content</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Test Label Modal -->
+<div class="modal fade" id="testLabelModal" tabindex="-1" aria-labelledby="testLabelModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="testLabelModalLabel">
+                    <i class="fas fa-vial"></i> Test Label Detection
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="testText" class="form-label">Test Text:</label>
+                    <textarea class="form-control" id="testText" rows="4" 
+                              placeholder="Enter text to test if this label would be detected..."></textarea>
+                </div>
+                <div id="testResults" class="d-none">
+                    <h6>Test Results:</h6>
+                    <div id="testResultsContent"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="runTest()">
+                    <i class="fas fa-play"></i> Run Test
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Load usage statistics
+document.addEventListener('DOMContentLoaded', function() {
+    loadUsageStats();
+});
+
+function loadUsageStats() {
+    fetch(`/label_usage/{{ label_id }}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                document.getElementById('usageStats').innerHTML = 
+                    '<p class="text-muted">Unable to load usage statistics</p>';
+            } else {
+                document.getElementById('usageStats').innerHTML = `
+                    <p><strong>Total Uses:</strong> ${data.total_uses || 0}</p>
+                    <p><strong>Last Used:</strong> ${data.last_used || 'Never'}</p>
+                    <p><strong>Accuracy:</strong> ${data.accuracy || 'N/A'}</p>
+                `;
+            }
+        })
+        .catch(error => {
+            document.getElementById('usageStats').innerHTML = 
+                '<p class="text-muted">Unable to load usage statistics</p>';
+        });
+}
+
+function testLabel() {
+    const modal = new bootstrap.Modal(document.getElementById('testLabelModal'));
+    modal.show();
+}
+
+function runTest() {
+    const testText = document.getElementById('testText').value.trim();
+    if (!testText) {
+        alert('Please enter some text to test');
+        return;
+    }
+    
+    // Get current form values
+    const keywords = document.getElementById('keywords').value.split(',').map(k => k.trim());
+    
+    // Simple test logic (in a real app, this would call the actual analysis engine)
+    const testResults = document.getElementById('testResults');
+    const testResultsContent = document.getElementById('testResultsContent');
+    
+    let matches = 0;
+    let foundKeywords = [];
+    
+    keywords.forEach(keyword => {
+        if (testText.toLowerCase().includes(keyword.toLowerCase())) {
+            matches++;
+            foundKeywords.push(keyword);
+        }
+    });
+    
+    const confidence = Math.min(matches / keywords.length, 1.0);
+    const wouldDetect = confidence > 0.3; // Simple threshold
+    
+    testResultsContent.innerHTML = `
+        <div class="alert alert-${wouldDetect ? 'success' : 'warning'}">
+            <strong>Detection Result:</strong> ${wouldDetect ? 'WOULD DETECT' : 'WOULD NOT DETECT'} this label
+        </div>
+        <p><strong>Confidence:</strong> ${(confidence * 100).toFixed(1)}%</p>
+        <p><strong>Keywords Found:</strong> ${foundKeywords.length > 0 ? foundKeywords.join(', ') : 'None'}</p>
+        <p><strong>Keywords Matched:</strong> ${matches} out of ${keywords.length}</p>
+    `;
+    
+    testResults.classList.remove('d-none');
+}
+
+// Form validation
+document.getElementById('labelName').addEventListener('input', function(e) {
+    let value = e.target.value.toUpperCase().replace(/\s+/g, '_');
+    value = value.replace(/[^A-Z0-9_]/g, '');
+    e.target.value = value;
+});
+</script>
+{% endblock %}

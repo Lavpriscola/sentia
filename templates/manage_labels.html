@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Labels - K-Pop Sentiment Analyzer{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <h1><i class="fas fa-tags"></i> Manage Sentiment Labels</h1>
+            <p class="lead">Create, edit, and delete sentiment labels to customize your analysis.</p>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Add New Label Button -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <button class="btn btn-success btn-lg" data-bs-toggle="modal" data-bs-target="#addLabelModal">
+                <i class="fas fa-plus"></i> Add New Label
+            </button>
+            <a href="{{ url_for('view_labels') }}" class="btn btn-info btn-lg ms-2">
+                <i class="fas fa-book"></i> View Labels Guide
+            </a>
+        </div>
+    </div>
+
+    <!-- Labels Grid -->
+    <div class="row">
+        {% for label_id, label in labels.items() %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <span class="badge bg-secondary me-2">{{ label_id }}</span>
+                        {{ label.name.replace('_', ' ').title() }}
+                    </h5>
+                    <span class="badge 
+                        {% if label.risk_level == 'Low' %}bg-success
+                        {% elif label.risk_level == 'Medium' %}bg-warning text-dark
+                        {% elif label.risk_level == 'High' %}bg-danger
+                        {% else %}bg-dark{% endif %}">
+                        {{ label.risk_level }} Risk
+                    </span>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">{{ label.description }}</p>
+                    
+                    <h6><i class="fas fa-key"></i> Keywords:</h6>
+                    <div class="mb-3">
+                        {% for keyword in label.keywords[:5] %}
+                        <span class="badge bg-secondary me-1 mb-1">{{ keyword }}</span>
+                        {% endfor %}
+                        {% if label.keywords|length > 5 %}
+                        <span class="text-muted small">+{{ label.keywords|length - 5 }} more</span>
+                        {% endif %}
+                    </div>
+                    
+                    {% if label.examples %}
+                    <h6><i class="fas fa-quote-left"></i> Example:</h6>
+                    <blockquote class="blockquote-footer small">
+                        "{{ label.examples[0] if label.examples else 'No example available' }}"
+                    </blockquote>
+                    {% endif %}
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="{{ url_for('edit_label', label_id=label_id) }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                    {% if label_id > 10 %}
+                    <button class="btn btn-danger btn-sm" onclick="deleteLabel({{ label_id }}, '{{ label.name }}')">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                    {% else %}
+                    <button class="btn btn-outline-secondary btn-sm" disabled title="Core labels cannot be deleted">
+                        <i class="fas fa-lock"></i> Protected
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Add New Label Modal -->
+<div class="modal fade" id="addLabelModal" tabindex="-1" aria-labelledby="addLabelModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addLabelModalLabel">
+                    <i class="fas fa-plus"></i> Add New Sentiment Label
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('add_label') }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="labelName" class="form-label">
+                            <i class="fas fa-tag"></i> Label Name <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control" id="labelName" name="name" required
+                               placeholder="e.g., CUSTOM_SENTIMENT">
+                        <div class="form-text">Use UPPERCASE_WITH_UNDERSCORES format. This will be used internally.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="labelDescription" class="form-label">
+                            <i class="fas fa-align-left"></i> Description <span class="text-danger">*</span>
+                        </label>
+                        <textarea class="form-control" id="labelDescription" name="description" rows="3" required
+                                  placeholder="Describe what this sentiment represents and when it should be used"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="riskLevel" class="form-label">
+                            <i class="fas fa-exclamation-triangle"></i> Risk Level <span class="text-danger">*</span>
+                        </label>
+                        <select class="form-select" id="riskLevel" name="risk_level" required>
+                            <option value="Low">Low Risk - Safe, positive content</option>
+                            <option value="Medium">Medium Risk - Emotional content needing monitoring</option>
+                            <option value="High">High Risk - Potentially inflammatory content</option>
+                            <option value="Very High">Very High Risk - Dangerous or malicious content</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="keywords" class="form-label">
+                            <i class="fas fa-key"></i> Keywords <span class="text-danger">*</span>
+                        </label>
+                        <input type="text" class="form-control" id="keywords" name="keywords" required
+                               placeholder="keyword1, keyword2, keyword3">
+                        <div class="form-text">Separate keywords with commas. These help identify this sentiment in text.</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="examples" class="form-label">
+                            <i class="fas fa-quote-left"></i> Example Text
+                        </label>
+                        <textarea class="form-control" id="examples" name="examples" rows="2" 
+                                  placeholder="Example text that would match this label"></textarea>
+                        <div class="form-text">Provide an example of text that should be classified with this label.</div>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Tip:</strong> After creating the label, you may need to restart the application for the changes to take full effect in the analysis engine.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save"></i> Add Label
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function deleteLabel(labelId, labelName) {
+    if (confirm(`Are you sure you want to delete the label "${labelName}"?\n\nThis action cannot be undone and will fail if the label is currently being used in existing analyses.`)) {
+        fetch(`/delete_label/${labelId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success message
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-success alert-dismissible fade show';
+                alertDiv.innerHTML = `
+                    ${data.message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                document.querySelector('.container-fluid').insertBefore(alertDiv, document.querySelector('.row'));
+                
+                // Reload page after a short delay
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            } else {
+                alert('Error deleting label: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Error deleting label: ' + error);
+        });
+    }
+}
+
+// Form validation
+document.getElementById('labelName').addEventListener('input', function(e) {
+    // Convert to uppercase and replace spaces with underscores
+    let value = e.target.value.toUpperCase().replace(/\s+/g, '_');
+    // Remove invalid characters
+    value = value.replace(/[^A-Z0-9_]/g, '');
+    e.target.value = value;
+});
+</script>
+{% endblock %}
