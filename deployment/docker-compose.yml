@@ -1,0 +1,129 @@
+# Docker Compose for K-Pop Sentiment Analyzer - Production Scale
+version: '3.8'
+
+services:
+  # Main Application Services
+  sentiment-api:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+    ports:
+      - "12000:12000"
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_URL=postgresql://sentiment_user:sentiment_pass@postgres:5432/sentiment_db
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - MAX_WORKERS=8
+      - ENABLE_MULTI_LANGUAGE=true
+      - ENABLE_ADVANCED_ANALYTICS=true
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    volumes:
+      - ../logs:/app/logs
+      - ../models:/app/models
+    restart: unless-stopped
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+
+  # Worker Services for Distributed Processing
+  sentiment-worker:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.worker
+    environment:
+      - DATABASE_URL=postgresql://sentiment_user:sentiment_pass@postgres:5432/sentiment_db
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672/
+      - WORKER_TYPE=sentiment_analysis
+      - WORKER_CONCURRENCY=4
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    volumes:
+      - ../logs:/app/logs
+      - ../models:/app/models
+    restart: unless-stopped
+    deploy:
+      replicas: 5
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 3G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+
+  # Database Services
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=sentiment_db
+      - POSTGRES_USER=sentiment_user
+      - POSTGRES_PASSWORD=sentiment_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  # Redis for Caching
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  # Message Queue
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: unless-stopped
+
+  # Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+  prometheus_data:
+  grafana_data:
